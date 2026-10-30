@@ -35,7 +35,6 @@ void create_node_if_null(struct huffman_node *node, enum Direction dir) {
 int insert(struct huffman_tree *ht, unsigned int codeword,
            int n, unsigned int symbol)
 {
-        printf("Inserting node codeword: %d symbol: %d\n", codeword, symbol);
         struct huffman_node *current_node = ht->root;
         for (int i = n - 1; i >= 0; i--) {
                 if (codeword & (1 << i)) {
@@ -53,7 +52,6 @@ unsigned int decode_symbol(struct huffman_tree *ht, struct bitreader *br) {
         struct huffman_node *current_node = ht->root;
         while (current_node->left != NULL || current_node->right != NULL) {
                 unsigned int bit = read_bit(br);
-                printf("bit read: %d\n", bit);
                 if (bit) {
                         current_node = current_node->right;
                 } else {

@@ -10,25 +10,28 @@ int code_to_bytes(unsigned int code, int n, char* filename);
 
 int main()
 {
-        char filename[] = "code_to_bytes.txt";
-        code_to_bytes(0b00010110111, 11, filename);
-        struct bitreader *br = make_bitreader(filename); 
+        //char filename[] = "code_to_bytes.txt";
+        //code_to_bytes(0b00010110111, 11, filename);
+        //struct bitreader *br = make_bitreader(filename); 
 
-        char alphabet[] = "ABCD";
-        int bl[] = {2, 1, 3, 3};
-        struct huffman_tree *ht = bl_list_to_tree(bl, 4, alphabet);
+        char filename2[] = "python_hello_world.txt";
+        struct bitreader *br2 = make_bitreader(filename2); 
+        decompress(br2);
+        //unsigned int alphabet[] = "ABCD";
+        //int bl[] = {2, 1, 3, 3};
+        //struct huffman_tree *ht = bl_list_to_tree(bl, 4, alphabet);
 
         //struct huffman_tree *ht = create_huffman_tree();
         //insert(ht, 0b01, 2, 'A');
         //insert(ht, 0b1, 1, 'B');
         //insert(ht, 0b000, 3, 'C');
         //insert(ht, 0b001, 3, 'D');
-        printf("%c\n", decode_symbol(ht, br));
-        printf("%c\n", decode_symbol(ht, br));
-        printf("%c\n", decode_symbol(ht, br));
-        printf("%c\n", decode_symbol(ht, br));
-        printf("%c\n", decode_symbol(ht, br));
-        printf("%c\n", decode_symbol(ht, br));
+        //printf("%c\n", decode_symbol(ht, br));
+        //printf("%c\n", decode_symbol(ht, br));
+        //printf("%c\n", decode_symbol(ht, br));
+        //printf("%c\n", decode_symbol(ht, br));
+        //printf("%c\n", decode_symbol(ht, br));
+        //printf("%c\n", decode_symbol(ht, br));
         //for (int i = 0; i < 11; i++) {
         //        printf("%d\n", read_bit(br));
         //}
