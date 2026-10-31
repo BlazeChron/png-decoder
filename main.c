@@ -4,40 +4,84 @@
 #include "decompress.h"
 #include "huffman_tree.h"
 
+#include <stdlib.h>
+
 
 // For testing using bytes in the DEFLATE spec order
 int code_to_bytes(unsigned int code, int n, char* filename);
+int test_decompress();
+
+struct chunk {
+        unsigned int chunk_type;
+        unsigned char *chunk_data;
+};
+
+int read_chunk(struct bitreader *br, struct chunk *c);
 
 int main()
 {
-        //char filename[] = "code_to_bytes.txt";
-        //code_to_bytes(0b00010110111, 11, filename);
-        //struct bitreader *br = make_bitreader(filename); 
+        //test_decompress();
 
-        char filename2[] = "python_hello_world.txt";
-        struct bitreader *br2 = make_bitreader(filename2); 
-        decompress(br2);
-        //unsigned int alphabet[] = "ABCD";
-        //int bl[] = {2, 1, 3, 3};
-        //struct huffman_tree *ht = bl_list_to_tree(bl, 4, alphabet);
+        char filename[] = "basn6a08.png";
+        struct bitreader *br = make_bitreader(filename); 
 
-        //struct huffman_tree *ht = create_huffman_tree();
-        //insert(ht, 0b01, 2, 'A');
-        //insert(ht, 0b1, 1, 'B');
-        //insert(ht, 0b000, 3, 'C');
-        //insert(ht, 0b001, 3, 'D');
-        //printf("%c\n", decode_symbol(ht, br));
-        //printf("%c\n", decode_symbol(ht, br));
-        //printf("%c\n", decode_symbol(ht, br));
-        //printf("%c\n", decode_symbol(ht, br));
-        //printf("%c\n", decode_symbol(ht, br));
-        //printf("%c\n", decode_symbol(ht, br));
-        //for (int i = 0; i < 11; i++) {
-        //        printf("%d\n", read_bit(br));
-        //}
+        // .png signature validation
+        unsigned char png_signature[] = "\x89PNG\r\n\x1a\n";
+        for (int i = 0; i < 8; i++) {
+                if (png_signature[i] != read_byte(br)) {
+                        printf("Invalid PNG Signature\n");
+                        return -1;
+                }
+        }
 
-        //struct bitreader *br = make_bitreader("python_hello_world.txt"); 
-        //decompress(br);
+        // reading chunks
+        struct chunk chunks[10000]; // idk how large
+        struct chunk *chunksptr = chunks;
+        // idk if there's a better way to do this
+        unsigned int IEND = 'I' << 24 | 'E' << 16 | 'N' << 8 | 'D';
+        while (1) {
+                struct chunk *c = malloc(sizeof(struct chunk));
+                read_chunk(br, c);
+                *chunksptr++ = *c;
+                if (c->chunk_type == IEND) {
+                        break;
+                }
+        }
+}
+
+int read_chunk(struct bitreader *br, struct chunk *c)
+{
+        // Reading chunks
+        // File is big endian, so need to hack it with bitreader
+        unsigned int chunk_length = 0;
+        for (int i = 3; i >= 0; i--) {
+                chunk_length |= read_byte(br) << (i * 8);
+        }
+        printf("chunk length: %u\n", chunk_length);
+
+        c->chunk_type = 0;
+        for (int i = 3; i >= 0; i--) {
+                c->chunk_type |= read_byte(br) << (i * 8);
+        }
+
+        c->chunk_data = malloc(chunk_length * sizeof(unsigned char));
+        for (int i = 0; i < chunk_length; i++) {
+                c->chunk_data[i] = read_byte(br);
+        }
+
+        // yea I'm not doing CRC maybe another time
+        unsigned int chunk_crc = 0;
+        for (int i = 3; i >= 0; i--) {
+                chunk_crc |= read_byte(br) << (i * 8);
+        }
+        
+}
+
+int test_decompress()
+{
+        char filename[] = "python_hello_world.txt";
+        struct bitreader *br = make_bitreader(filename); 
+        decompress(br);
 }
 
 
