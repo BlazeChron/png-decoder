@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc main.c bitreader.c decompress.c huffman_tree.c
+gcc -g main.c bitreader.c decompress.c huffman_tree.c

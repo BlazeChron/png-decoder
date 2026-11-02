@@ -1,11 +1,12 @@
 #include "decompress.h"
 #include "huffman_tree.h"
 
-int decode_trees(struct bitreader *br, struct huffman_tree *literal_tree,
-                 struct huffman_tree *distance_tree);
+int decode_trees(struct bitreader *br, struct huffman_tree **literal_tree,
+                 struct huffman_tree **distance_tree);
+int inflate(struct bitreader *br, char* decompressed_bytes);
 
 // TODO Only returns success/failure, can't return stream rn
-int decompress(struct bitreader *br)
+int decompress(struct bitreader *br, char* decompressed_bytes)
 {
         unsigned int CMF = read_byte(br);
         int CM = CMF & 15;      // Compression method
@@ -31,20 +32,19 @@ int decompress(struct bitreader *br)
                 printf("Invalid FDICT %d\n", FDICT);
                 return -1;
         }
-        int out;
-        inflate(br, &out);
+        inflate(br, decompressed_bytes);
         unsigned int ADLER32 = read_bytes(br, 4);   // Ignored
 
         return 0;
 }
 
-int inflate(struct bitreader *br, int* out)
+int inflate(struct bitreader *br, char* decompressed_bytes)
 {
         unsigned int BFINAL = 0;
 
         // target .png is 217x120 pixels, 4bytes per pixel = 104160.
         // 300000 is conservative, bc I'm not sure yet
-        char decompressed_bytes[300000];
+        //char decompressed_bytes[300000];
 
         while (!BFINAL) {
                 BFINAL = read_bit(br);
@@ -62,7 +62,7 @@ int inflate(struct bitreader *br, int* out)
         }
 
         // TODO just for testing
-        printf("%s\n", decompressed_bytes);
+        //printf("%s\n", decompressed_bytes);
         return 0;
 }
 
@@ -99,6 +99,7 @@ int inflate_block_data(struct bitreader *br, struct huffman_tree *length_tree,
                                distance_base[dst_symbol];
                 for (int i = 0; i < length; i++) {
                         *decompressed_bytes = *(decompressed_bytes - distance);
+                        decompressed_bytes++;
                 }
         }
         return 0;
@@ -111,14 +112,20 @@ int max(int a, int b)
 
 struct huffman_tree *bl_list_to_tree(int bl[], int n, unsigned int alphabet[])
 {
+
         int bl_max = 0;
         for (int i = 0; i < n; i++) {
                 bl_max = max(bl_max, bl[i]);
         }
         int bl_count[16] = {0}; //TODO idk the max number, p sure it's [0, 15]
         // Not sure if should duplicate this or just ignore bl_max
-        for (int i = 0; i < n; i++) {
-                bl_count[bl[i]]++;
+        for (int i = 0; i <= bl_max; i++) {
+                for (int j = 0; j < n; j++) {
+                        if (bl[j] != i || bl[j] == 0) {
+                                continue;
+                        }
+                        bl_count[i]++;
+                }
         }
         unsigned int next_code[16] = {0}; // Definitely 16
         for (int i = 2; i <= bl_max; i++) {
@@ -140,8 +147,8 @@ struct huffman_tree *bl_list_to_tree(int bl[], int n, unsigned int alphabet[])
 int code_length_codes_order[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12,
                                  3, 13, 2, 14, 1, 15};
 
-int decode_trees(struct bitreader *br, struct huffman_tree *literal_tree,
-                 struct huffman_tree *distance_tree)
+int decode_trees(struct bitreader *br, struct huffman_tree **literal_tree,
+                 struct huffman_tree **distance_tree)
 {
         // number of literal/length codes
         unsigned int HLIT = read_bits(br, 5) + 257;
@@ -153,14 +160,16 @@ int decode_trees(struct bitreader *br, struct huffman_tree *literal_tree,
         int code_len_tree_bl[19] = {0};
         unsigned int code_len_alphabet[19];
         for (int i = 0; i < 19; i++) {
-                code_len_tree_bl[code_length_codes_order[i]] = read_bits(br, 3);
                 code_len_alphabet[i] = i;
+        }
+        for (int i = 0; i < HCLEN; i++) {
+                code_len_tree_bl[code_length_codes_order[i]] = read_bits(br, 3);
         }
         struct huffman_tree *code_len_tree = bl_list_to_tree(code_len_tree_bl,
                                                              19,
                                                              code_len_alphabet);
 
-        int bit_len[318]; // 286 lit tree symbols + 32 dst tree symbols
+        int bit_len[318] = {0}; // 286 lit tree symbols + 32 dst tree symbols
         int i = 0;
         while (i < HLIT + HDIST) {
                 unsigned int symbol = decode_symbol(code_len_tree, br);
@@ -184,7 +193,6 @@ int decode_trees(struct bitreader *br, struct huffman_tree *literal_tree,
                                 bit_len[i++] = 0;
                         }
                 } else {
-                        printf("Invalid symbol for decode_trees\n");
                 }
         }
         unsigned int alphabet[286] = {0};
@@ -201,9 +209,9 @@ int decode_trees(struct bitreader *br, struct huffman_tree *literal_tree,
         for (int i = HLIT; i < HLIT + HDIST; i++) {
                 distances[i - HLIT] = bit_len[i];
         }
-        literal_tree = bl_list_to_tree(literal_lengths, HLIT, alphabet);
+        *literal_tree = bl_list_to_tree(literal_lengths, HLIT, alphabet);
 
-        distance_tree = bl_list_to_tree(distances, HDIST, alphabet);
+        *distance_tree = bl_list_to_tree(distances, HDIST, alphabet);
         return 0;
 }
 
@@ -254,7 +262,7 @@ int inflate_block_dynamic(struct bitreader *br, char *decompressed_bytes)
 {
         struct huffman_tree *literal_tree;
         struct huffman_tree *distance_tree;
-        decode_trees(br, literal_tree, distance_tree);
+        decode_trees(br, &literal_tree, &distance_tree);
         inflate_block_data(br, literal_tree, distance_tree, decompressed_bytes);
         return 0;
 }

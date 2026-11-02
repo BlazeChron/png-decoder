@@ -5,6 +5,8 @@ struct bitreader *make_bitreader(char *filename)
 {
         struct bitreader *br = malloc(sizeof(struct bitreader));
         br->fptr = fopen(filename, "r");
+        br->numbits = 0;
+        br->b = 0;
         return br;
 }
 
