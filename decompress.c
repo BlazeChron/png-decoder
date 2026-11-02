@@ -92,9 +92,9 @@ int inflate_block_data(struct bitreader *br, struct huffman_tree *length_tree,
                 }
                 // length/distance
                 symbol -= 257;
-                unsigned int dst_symbol = decode_symbol(distance_tree, br);
                 int length = read_bits(br, length_extra_bits[symbol]) +
                              length_base[symbol];
+                unsigned int dst_symbol = decode_symbol(distance_tree, br);
                 int distance = read_bits(br, distance_extra_bits[dst_symbol]) +
                                distance_base[dst_symbol];
                 for (int i = 0; i < length; i++) {
