@@ -20,13 +20,17 @@ struct chunk {
 int read_chunk(struct bitreader *br, struct chunk *c);
 void print_chunk_type(unsigned int chunk_type);
 unsigned int read_four_bytes(struct bitreader *br);
+int paeth_predictor(int r, int c, unsigned char recon[], int width);
+int recon_a(int r, int c, unsigned char recon[], int width);
+int recon_b(int r, int c, unsigned char recon[], int width);
+int recon_c(int r, int c, unsigned char recon[], int width);
 
 int main()
 {
-        test_decompress();
+        //test_decompress();
 
-        char filename[] = "basn6a08.png";
-        //char filename[] = "202610101545.png";
+        //char filename[] = "basn6a08.png";
+        char filename[] = "202610101545.png";
         struct bitreader *br = make_bitreader(filename); 
 
         // .png signature validation
@@ -37,7 +41,6 @@ int main()
                         return -1;
                 }
         }
-/*
         // reading chunks
         int MAX_CHUNKS = 100;
         struct chunk chunks[MAX_CHUNKS]; // idk how large
@@ -118,19 +121,93 @@ int main()
         }
         char decompressed_bytes[300000];
         rewind(tmp);
-        printf("rewind tmp\n");
         struct bitreader *idat_br = malloc(sizeof(struct bitreader));
-        printf("created br\n");
         idat_br->fptr = tmp;
         idat_br->numbits = 0;
         idat_br->b = 0;
-        printf("assigned fptr\n");
         decompress(idat_br, decompressed_bytes);
-        printf("decompressed\n");
-        for (int i = 0; i < 100; i++) {
-                printf("%d\n", decompressed_bytes);
+
+        unsigned char *recon = malloc(sizeof(unsigned char*) * height * width);
+
+        int idat_iterator = 0;
+        for (int i = 0; i < height; i++) {
+                unsigned char filter_type = decompressed_bytes[idat_iterator];
+                idat_iterator++;
+                for (int j = 0; j < width * 4; j++) {
+                        int filter_x = decompressed_bytes[idat_iterator];
+                        idat_iterator++;
+                        int recon_x;
+                        if (filter_type == 0) {
+                                recon_x = filter_x;
+                        } else if (filter_type == 1) {
+                                recon_x = filter_x + recon_a(i, j, recon, width);
+                        } else if (filter_type == 2) {
+                                recon_x = filter_x + recon_b(i, j, recon, width);
+                        } else if (filter_type == 3) {
+                                int ave = recon_a(i, j, recon, width) / 2 + recon_b(i, j, recon, width) / 2;
+                                recon_x = filter_x + ave;
+                        } else if (filter_type == 4) {
+                                recon_x = filter_x + paeth_predictor(i, j, recon, width);
+                        }
+                        recon[i * width * 4 + j] = recon_x & 255;
+                }
         }
-        */
+        for (int i = 0; i < height; i++) {
+                for (int j = 0; j < width * 4; j+= 4) {
+                        int idx = i * width * 4 + j;
+                        printf("[%hhu,", recon[idx]);
+                        printf("%hhu,", recon[idx + 1]);
+                        printf("%hhu,", recon[idx + 2]);
+                        printf("%hhu]", recon[idx + 3]);
+                }
+                printf("\n");
+        }
+
+        //for (int i = 0; i < 300; i += 4) {
+        //        unsigned char r = decompressed_bytes[i];
+        //        unsigned char g = decompressed_bytes[i + 1];
+        //        unsigned char b = decompressed_bytes[i + 2];
+        //        unsigned char a = decompressed_bytes[i + 3];
+        //        printf("RGBA: %hhu %hhu %hhu %hhu\n", r, g, b, a);
+        //}
+}
+int paeth_predictor(int row, int col, unsigned char recon[], int width) {
+        int a = recon_a(row, col, recon, width);
+        int b = recon_b(row, col, recon, width);
+        int c = recon_c(row, col, recon, width);
+        int p = a + b - c;
+        int pa = p - a > 0 ? p - a : a - p;
+        int pb = p - b > 0 ? p - b : b - p;
+        int pc = p - c > 0 ? p - c : c - p;
+        if (pa <= pb && pa <= pc) {
+                return a;
+        } else if (pb <= pc) {
+                return b;
+        } else {
+                return c;
+        }
+}
+
+int recon_a(int r, int c, unsigned char recon[], int width) {
+        if (c >= 4) {
+                return recon[r * width * 4 + c - 4];
+        } else {
+                return 0;
+        }
+}
+int recon_b(int r, int c, unsigned char recon[], int width) {
+        if (r > 0) {
+                return recon[(r - 1) * width * 4 + c];
+        } else {
+                return 0;
+        }
+}
+int recon_c(int r, int c, unsigned char recon[], int width) {
+        if (r > 0 && c >= 4) {
+                return recon[(r - 1) * width * 4 + c - 4];
+        } else {
+                return 0;
+        }
 }
 
 unsigned int read_four_bytes(struct bitreader *br)
