@@ -3,7 +3,11 @@
 
 int decode_trees(struct bitreader *br, struct huffman_tree **literal_tree,
                  struct huffman_tree **distance_tree);
-int inflate(struct bitreader *br, char* decompressed_bytes);
+int inflate(struct bitreader *br, char *db);
+
+int inflate_block_no_compression(struct bitreader *br, char **decompressed_bytes); 
+int inflate_block_fixed(struct bitreader *br, char **decompressed_bytes);
+int inflate_block_dynamic(struct bitreader *br, char **decompressed_bytes);
 
 // TODO Only returns success/failure, can't return stream rn
 int decompress(struct bitreader *br, char* decompressed_bytes)
@@ -50,11 +54,14 @@ int inflate(struct bitreader *br, char* decompressed_bytes)
                 BFINAL = read_bit(br);
                 unsigned int BTYPE = read_bits(br, 2);
                 if (BTYPE == 0) {
-                        inflate_block_no_compression(br, decompressed_bytes); 
+                        printf("Using no compression inflation\n");
+                        inflate_block_no_compression(br, &decompressed_bytes); 
                 } else if (BTYPE == 1) {
-                        inflate_block_fixed(br, decompressed_bytes);
+                        printf("Using fixed inflation\n");
+                        inflate_block_fixed(br, &decompressed_bytes);
                 } else if (BTYPE == 2) {
-                        inflate_block_dynamic(br, decompressed_bytes);
+                        printf("Using dynamic inflation\n");
+                        inflate_block_dynamic(br, &decompressed_bytes);
                 } else {
                         printf("Invalid BTYPE for block\n");
                         return -1;
@@ -78,13 +85,13 @@ int distance_base[] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193
 
 int inflate_block_data(struct bitreader *br, struct huffman_tree *length_tree,
                        struct huffman_tree *distance_tree,
-                       char* decompressed_bytes)
+                       char** decompressed_bytes)
 {
         while (1) {
                 unsigned int symbol = decode_symbol(length_tree, br);
                 if (symbol <= 255) {
-                        *decompressed_bytes = symbol;
-                        decompressed_bytes++;
+                        **decompressed_bytes = symbol;
+                        (*decompressed_bytes)++;
                         continue;
                 }
                 if (symbol == 256) {
@@ -98,8 +105,8 @@ int inflate_block_data(struct bitreader *br, struct huffman_tree *length_tree,
                 int distance = read_bits(br, distance_extra_bits[dst_symbol]) +
                                distance_base[dst_symbol];
                 for (int i = 0; i < length; i++) {
-                        *decompressed_bytes = *(decompressed_bytes - distance);
-                        decompressed_bytes++;
+                        **decompressed_bytes = *(*decompressed_bytes - distance);
+                        (*decompressed_bytes)++;
                 }
         }
         return 0;
@@ -215,17 +222,18 @@ int decode_trees(struct bitreader *br, struct huffman_tree **literal_tree,
         return 0;
 }
 
-int inflate_block_no_compression(struct bitreader *br, char *decompressed_bytes)
+int inflate_block_no_compression(struct bitreader *br, char **decompressed_bytes)
 {
         unsigned int LEN = read_bytes(br, 2);
         unsigned int NLEN = read_bytes(br, 2);
         for (int i = 0; i < LEN; i++) {
-                decompressed_bytes[i] = read_byte(br);
+                **decompressed_bytes = read_byte(br);
+                (*decompressed_bytes)++;
         }
         return 0;
 }
 
-int inflate_block_fixed(struct bitreader *br, char *decompressed_bytes)
+int inflate_block_fixed(struct bitreader *br, char **db)
 {
         // pre-build known trees
         int bit_len[288];
@@ -254,15 +262,15 @@ int inflate_block_fixed(struct bitreader *br, char *decompressed_bytes)
         }
         struct huffman_tree *distance_tree = bl_list_to_tree(bit_len, 30,
                                                              alphabet);
-        inflate_block_data(br, literal_tree, distance_tree, decompressed_bytes);
+        inflate_block_data(br, literal_tree, distance_tree, db);
         return 0;
 }
 
-int inflate_block_dynamic(struct bitreader *br, char *decompressed_bytes)
+int inflate_block_dynamic(struct bitreader *br, char **db)
 {
         struct huffman_tree *literal_tree;
         struct huffman_tree *distance_tree;
         decode_trees(br, &literal_tree, &distance_tree);
-        inflate_block_data(br, literal_tree, distance_tree, decompressed_bytes);
+        inflate_block_data(br, literal_tree, distance_tree, db);
         return 0;
 }
