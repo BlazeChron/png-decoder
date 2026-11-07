@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "decoder.h"
+#include "bitreader.h"
 #include "decompress.h"
+
+#include "decoder.h"
+
+#define MAX_CHUNKS 1000 //idk how large
 
 struct chunk {
         unsigned int chunk_length;
@@ -18,8 +22,19 @@ int recon_a(int r, int c, unsigned char recon[], int width);
 int recon_b(int r, int c, unsigned char recon[], int width);
 int recon_c(int r, int c, unsigned char recon[], int width);
 
-int decode_png(struct bitreader *br)
+int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
+                    unsigned int* h)
 {
+        if (*bytes != NULL) {
+                printf("bytes pointer is not NULL\n");
+                return -2;
+        }
+        struct bitreader *br = make_bitreader(filename); 
+//}
+//
+//
+//int decode_png(struct bitreader *br)
+//{
         // .png signature validation
         unsigned char png_signature[] = "\x89PNG\r\n\x1a\n";
         for (int i = 0; i < 8; i++) {
@@ -28,9 +43,10 @@ int decode_png(struct bitreader *br)
                         return -1;
                 }
         }
+
         // reading chunks
-        int MAX_CHUNKS = 1000;
-        struct chunk chunks[MAX_CHUNKS]; // idk how large
+        // TODO MAX_CHUNKS should probably be dynamically calculated
+        struct chunk chunks[MAX_CHUNKS];
         struct chunk *chunksptr = chunks;
         // idk if there's a better way to do this
         unsigned int IEND = 'I' << 24 | 'E' << 16 | 'N' << 8 | 'D';
@@ -89,6 +105,7 @@ int decode_png(struct bitreader *br)
 
         // compiling IDAT chunks
         FILE *tmp = tmpfile();
+        int idat_chunk_lengths = 0;
         if (tmp == NULL) {
                 printf("unable to create tmp file for IDAT chunks\n");
                 return -1;
@@ -100,12 +117,16 @@ int decode_png(struct bitreader *br)
                         continue;
                 }
                 printf("found IDAT of length: %d\n", chunks[i].chunk_length);
+                idat_chunk_lengths += chunks[i].chunk_length;
                 for (unsigned int j = 0; j < chunks[i].chunk_length;
                      j++) {
                         fputc(*(chunks[i].chunk_data + j), tmp);
                 }
         }
-        char *decompressed_bytes = malloc(sizeof(char) * width * height * 4);
+
+        //char *decompressed_bytes = malloc(sizeof(char) * width * height * 4);
+        char *decompressed_bytes = malloc(sizeof(char) * (width * 4 + 1) * height);
+
         fflush(tmp);
         rewind(tmp);
         struct bitreader *idat_br = malloc(sizeof(struct bitreader));
@@ -113,11 +134,15 @@ int decode_png(struct bitreader *br)
         idat_br->numbits = 0;
         idat_br->b = 0;
         decompress(idat_br, decompressed_bytes);
+        printf("decompress finished\n");
+        fflush(stdout);
 
         int bytes_per_pixel = 4;
         int stride = width * bytes_per_pixel;
+
         // Reconstructed array of pixels
         unsigned char *recon = malloc(sizeof(unsigned char) * height * stride);
+        //recon = malloc(sizeof(unsigned char) * height * stride);
 
         int idat_iterator = 0;
         for (int r = 0; r < height; r++) {
@@ -143,22 +168,26 @@ int decode_png(struct bitreader *br)
                 }
         }
 
+        *w = width;
+        *h = height;
+        *bytes = recon;
+
         // Output decompressed RGBA to file
-        FILE *outfile = fopen("thingy.txt", "w");
-        char pixel[18];
-        for (int i = 0; i < height; i++) {
-                for (int j = 0; j < width * 4; j+= 4) {
-                        int idx = i * width * 4 + j;
-                        sprintf(pixel, "[%hhu,%hhu,%hhu,%hhu]", 
-                                recon[idx],
-                                recon[idx + 1],
-                                recon[idx + 2],
-                                recon[idx + 3]);
-                        fputs(pixel, outfile);
-                }
-                fputs("\n", outfile);
-        }
-        fclose(outfile);
+        //FILE *outfile = fopen("thingy.txt", "w");
+        //char pixel[18];
+        //for (int i = 0; i < height; i++) {
+        //        for (int j = 0; j < width * 4; j+= 4) {
+        //                int idx = i * width * 4 + j;
+        //                sprintf(pixel, "[%hhu,%hhu,%hhu,%hhu]", 
+        //                        recon[idx],
+        //                        recon[idx + 1],
+        //                        recon[idx + 2],
+        //                        recon[idx + 3]);
+        //                fputs(pixel, outfile);
+        //        }
+        //        fputs("\n", outfile);
+        //}
+        //fclose(outfile);
 }
 
 int paeth_predictor(int row, int col, unsigned char recon[], int stride) {
