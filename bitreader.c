@@ -10,6 +10,12 @@ struct bitreader *make_bitreader(char *filename)
         return br;
 }
 
+void free_bitreader(struct bitreader *br)
+{
+       fclose(br->fptr);
+       free(br); 
+}
+
 void bitreader_get_char(struct bitreader *br)
 {
         putchar(fgetc(br->fptr));

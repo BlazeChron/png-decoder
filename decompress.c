@@ -68,8 +68,6 @@ int inflate(struct bitreader *br, char* decompressed_bytes)
                 }
         }
 
-        // TODO just for testing
-        //printf("%s\n", decompressed_bytes);
         return 0;
 }
 
@@ -219,6 +217,8 @@ int decode_trees(struct bitreader *br, struct huffman_tree **literal_tree,
         *literal_tree = bl_list_to_tree(literal_lengths, HLIT, alphabet);
 
         *distance_tree = bl_list_to_tree(distances, HDIST, alphabet);
+
+        free_huffman_tree(code_len_tree);
         return 0;
 }
 
@@ -263,6 +263,9 @@ int inflate_block_fixed(struct bitreader *br, char **db)
         struct huffman_tree *distance_tree = bl_list_to_tree(bit_len, 30,
                                                              alphabet);
         inflate_block_data(br, literal_tree, distance_tree, db);
+
+        free_huffman_tree(literal_tree);
+        free_huffman_tree(distance_tree);
         return 0;
 }
 
@@ -272,5 +275,8 @@ int inflate_block_dynamic(struct bitreader *br, char **db)
         struct huffman_tree *distance_tree;
         decode_trees(br, &literal_tree, &distance_tree);
         inflate_block_data(br, literal_tree, distance_tree, db);
+
+        free_huffman_tree(literal_tree);
+        free_huffman_tree(distance_tree);
         return 0;
 }

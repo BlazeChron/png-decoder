@@ -30,11 +30,7 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
                 return -2;
         }
         struct bitreader *br = make_bitreader(filename); 
-//}
-//
-//
-//int decode_png(struct bitreader *br)
-//{
+
         // .png signature validation
         unsigned char png_signature[] = "\x89PNG\r\n\x1a\n";
         for (int i = 0; i < 8; i++) {
@@ -47,18 +43,21 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         // reading chunks
         // TODO MAX_CHUNKS should probably be dynamically calculated
         struct chunk chunks[MAX_CHUNKS];
+        int valid_chunks = 0;
         struct chunk *chunksptr = chunks;
         // idk if there's a better way to do this
         unsigned int IEND = 'I' << 24 | 'E' << 16 | 'N' << 8 | 'D';
         while (1) {
-                struct chunk *c = malloc(sizeof(struct chunk));
-                read_chunk(br, c);
-                *chunksptr++ = *c;
-                print_chunk_type(c->chunk_type);
-                if (c->chunk_type == IEND) {
+                //struct chunk *c = malloc(sizeof(struct chunk));
+                read_chunk(br, chunksptr);
+                print_chunk_type(chunksptr->chunk_type);
+                valid_chunks++;
+                if (chunksptr->chunk_type == IEND) {
                         break;
                 }
+                *chunksptr++;
         }
+        printf("chunk count found: %d\n", valid_chunks);
 
         // reading IHDR chunk
         int ihdr_index = 0;
@@ -112,7 +111,7 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         }
         // taking advantage of PNG spec requiring consecutive IDAT chunks
         unsigned int IDAT = 'I' << 24 | 'D' << 16 | 'A' << 8 | 'T';
-        for (int i = 0; i < MAX_CHUNKS; i++) {
+        for (int i = 0; i < valid_chunks; i++) {
                 if (chunks[i].chunk_type != IDAT) {
                         continue;
                 }
@@ -172,22 +171,15 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         *h = height;
         *bytes = recon;
 
-        // Output decompressed RGBA to file
-        //FILE *outfile = fopen("thingy.txt", "w");
-        //char pixel[18];
-        //for (int i = 0; i < height; i++) {
-        //        for (int j = 0; j < width * 4; j+= 4) {
-        //                int idx = i * width * 4 + j;
-        //                sprintf(pixel, "[%hhu,%hhu,%hhu,%hhu]", 
-        //                        recon[idx],
-        //                        recon[idx + 1],
-        //                        recon[idx + 2],
-        //                        recon[idx + 3]);
-        //                fputs(pixel, outfile);
-        //        }
-        //        fputs("\n", outfile);
-        //}
-        //fclose(outfile);
+        // cleanup
+        for (int i = 0; i < valid_chunks; i++) {
+                if (chunks[i].chunk_data != NULL) {
+                        free(chunks[i].chunk_data);
+                }
+        }
+        free(decompressed_bytes);
+        free_bitreader(idat_br);
+        free_bitreader(br);
 }
 
 int paeth_predictor(int row, int col, unsigned char recon[], int stride) {

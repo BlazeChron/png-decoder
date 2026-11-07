@@ -1,6 +1,8 @@
 #include "huffman_tree.h"
 #include <stdlib.h>
 
+void free_huffman_node(struct huffman_node *hn);
+
 struct huffman_tree *create_huffman_tree()
 {
         struct huffman_tree *ht = malloc(sizeof(struct huffman_tree));
@@ -8,6 +10,23 @@ struct huffman_tree *create_huffman_tree()
         ht->root->left = NULL;
         ht->root->right = NULL;
         return ht;
+}
+
+void free_huffman_tree(struct huffman_tree *ht)
+{
+        free_huffman_node(ht->root);
+        free(ht);
+}
+
+void free_huffman_node(struct huffman_node *hn)
+{
+        if (hn->left != NULL) {
+                free_huffman_node(hn->left);
+        }
+        if (hn->right != NULL) {
+                free_huffman_node(hn->right);
+        }
+        free(hn);
 }
 
 enum Direction {

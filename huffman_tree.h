@@ -12,6 +12,7 @@ struct huffman_tree {
 };
 
 struct huffman_tree *create_huffman_tree();
+void free_huffman_tree(struct huffman_tree *ht);
 
 int insert(struct huffman_tree *ht, unsigned int codeword,
            int n, unsigned int symbol);
