@@ -1,3 +1,11 @@
-.png file decoder
+.png file decoder in c
 
-Includes DEFLATE decompressor
+Usage:
+Look at main.c for example usage.
+Main API function is decode_png_file, which returns RGBA bytes as a 1D array
+in scanlines.
+
+Limitations: only truecolor alpha
+
+Other stuff:
+Includes DEFLATE spec decompressor
