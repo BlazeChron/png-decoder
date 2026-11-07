@@ -1,2 +1,2 @@
 #!/bin/bash
-TMPDIR=~/tmp valgrind -s --leak-check=full ./a.out 
+TMPDIR=~/tmp valgrind -s --leak-check=full ./a.out img/suzukage.png

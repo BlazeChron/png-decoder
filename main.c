@@ -5,16 +5,20 @@
 //#include "huffman_tree.h"
 //#include "decompress.h"
 
-int main()
+int main(int argc, char *argv[])
 {
-
+        if (argc < 2) {
+                printf("Usage: [filepath]\n");
+                return -1;
+        }
         //char filename[] = "img/basn6a08.png";
         //char filename[] = "img/202610101545.png";
         //char filename[] = "m.png";
-        char filename[] = "img/suzukage.png";
+        //char filename[] = "img/suzukage.png";
         //struct bitreader *br = make_bitreader(filename); 
         //decode_png(br);
         //char filename[] = "img/image.png";
+        char *filename = argv[1];
         unsigned char *bytes = NULL;
         unsigned int width;
         unsigned int height;
