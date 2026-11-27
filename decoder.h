@@ -25,5 +25,3 @@
  */
 int decode_png_file(char *filename, unsigned char **bytes, unsigned int* width,
                     unsigned int* height);
-
-//int decode_png(struct bitreader *br);
