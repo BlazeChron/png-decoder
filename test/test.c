@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
     // ... x = width, y = height, n = # 8-bit components per pixel ...
     // ... replace '0' with '1'..'4' to force that many components per pixel
     // ... but 'n' will always be the number that it would have been if you said 0
+    int test_failed = 0;
     if (data != NULL && bytes != NULL) {
-        int test_failed = 0;
         FILE *outfile = fopen("thingy.txt", "w");
         char pixel[18];
         // TODO this is wrong, assumes it is the truecolor alpha type, 4 colors
@@ -51,7 +51,8 @@ int main(int argc, char *argv[])
 
 
     // TODO optional print, remove for actual program
-#if 1
+#ifndef GITHUB_ACTIONS
+    printf("github actions is not active\n");
     if (data != NULL) {
         FILE *outfile = fopen("thingy.txt", "w");
         char pixel[18];
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
 #endif
 
     stbi_image_free(data);
-        free(bytes);
+    free(bytes);
 
-    return 1; // testing github actions if working
+    return test_failed; // return 1 if failed for github actions
 }
