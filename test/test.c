@@ -77,5 +77,5 @@ int main(int argc, char *argv[])
     stbi_image_free(data);
         free(bytes);
 
-    return 0;
+    return 1; // testing github actions if working
 }
