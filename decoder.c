@@ -21,6 +21,7 @@ int paeth_predictor(int r, int c, unsigned char recon[], int width);
 int recon_a(int r, int c, unsigned char recon[], int width);
 int recon_b(int r, int c, unsigned char recon[], int width);
 int recon_c(int r, int c, unsigned char recon[], int width);
+void free_chunks(struct chunk *chunks, int valid_chunks);
 
 int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
                     unsigned int* h)
@@ -36,6 +37,7 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         for (int i = 0; i < 8; i++) {
                 if (png_signature[i] != read_byte(br)) {
                         printf("Invalid PNG Signature\n");
+                        free_bitreader(br);
                         return -1;
                 }
         }
@@ -48,7 +50,6 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         // idk if there's a better way to do this
         unsigned int IEND = 'I' << 24 | 'E' << 16 | 'N' << 8 | 'D';
         while (1) {
-                //struct chunk *c = malloc(sizeof(struct chunk));
                 read_chunk(br, chunksptr);
                 print_chunk_type(chunksptr->chunk_type);
                 valid_chunks++;
@@ -81,22 +82,32 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         interlacem = *(chunks[0].chunk_data + ihdr_index++);
         if (compm != 0)  {
                 printf("invalid compression method");
+                free_bitreader(br);
+                free_chunks(chunks, valid_chunks);
                 return -1;
         }
         if (filterm != 0)  {
                 printf("invalid filter method");
+                free_bitreader(br);
+                free_chunks(chunks, valid_chunks);
                 return -1;
         }
         if (colort != 6)  {
                 printf("only truecolor alpha supported");
+                free_bitreader(br);
+                free_chunks(chunks, valid_chunks);
                 return -1;
         }
         if (bitd != 8)  {
                 printf("only bitdepth = 8 supported");
+                free_bitreader(br);
+                free_chunks(chunks, valid_chunks);
                 return -1;
         }
         if (interlacem != 0)  {
                 printf("interlacing not supported");
+                free_bitreader(br);
+                free_chunks(chunks, valid_chunks);
                 return -1;
         }
         printf("width: %u height: %u\n", width, height);
@@ -107,6 +118,8 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         int idat_chunk_lengths = 0;
         if (tmp == NULL) {
                 printf("unable to create tmp file for IDAT chunks\n");
+                free_bitreader(br);
+                free_chunks(chunks, valid_chunks);
                 return -1;
         }
         // taking advantage of PNG spec requiring consecutive IDAT chunks
@@ -123,7 +136,6 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
                 }
         }
 
-        //char *decompressed_bytes = malloc(sizeof(char) * width * height * 4);
         char *decompressed_bytes = malloc(sizeof(char) * (width * 4 + 1) * height);
 
         fflush(tmp);
@@ -141,7 +153,6 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
 
         // Reconstructed array of pixels
         unsigned char *recon = malloc(sizeof(unsigned char) * height * stride);
-        //recon = malloc(sizeof(unsigned char) * height * stride);
 
         int idat_iterator = 0;
         for (int r = 0; r < height; r++) {
@@ -172,15 +183,24 @@ int decode_png_file(char *filename, unsigned char **bytes, unsigned int* w,
         *bytes = recon;
 
         // cleanup
+        free_chunks(chunks, valid_chunks);
+        free(decompressed_bytes);
+        free_bitreader(idat_br);
+        free_bitreader(br);
+
+        return 0;
+}
+
+void free_chunks(struct chunk *chunks, int valid_chunks)
+{
+        // cleanup
         for (int i = 0; i < valid_chunks; i++) {
                 if (chunks[i].chunk_data != NULL) {
                         free(chunks[i].chunk_data);
                 }
         }
-        free(decompressed_bytes);
-        free_bitreader(idat_br);
-        free_bitreader(br);
 }
+
 
 int paeth_predictor(int row, int col, unsigned char recon[], int stride) {
         int a = recon_a(row, col, recon, stride);

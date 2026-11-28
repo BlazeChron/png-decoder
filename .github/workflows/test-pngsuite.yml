@@ -1,0 +1,12 @@
+name: Pngsuite Test
+run-name: ${{ github.actor }} running test for pngsuite
+on: [pull_request]
+jobs:
+    build:
+        name: Executing test script
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Compiling and running test binary
+              run: ./build_test.sh
