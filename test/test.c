@@ -45,10 +45,6 @@ bit-depth
 - 16 //TODO not supported
 */
 
-struct test_image {
-    char name[12];
-};
-
 // TODO add filter here
 int is_valid_test_image(char *filename) {
     return 1;
@@ -95,7 +91,7 @@ int main(int argc, char *argv[])
     //struct test_image test_images[175] = {0};
     // Look through test images in directory
     char filedir[] = "./test/pngsuite/png/";
-    char fullpath[sizeof(filedir)];
+    char fullpath[sizeof(filedir) + 13];
     printf("sizeof(filedir) %ld\n", sizeof(filedir));
     DIR *dir;
     struct dirent *ent;
@@ -108,9 +104,6 @@ int main(int argc, char *argv[])
     int total_tests = 0;
     int tests_passed = 0;
     while((ent = readdir(dir)) != NULL) {
-        if (total_tests > 1) {
-            break;
-        }
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
             printf("Found %s, not a file, skipping...\n", ent->d_name);
             continue;
@@ -129,6 +122,7 @@ int main(int argc, char *argv[])
         }
     } 
     printf("Passed %d / %d test cases\n", tests_passed, total_tests);
+    closedir(dir);
 //basn6a08.png
 
 /*
