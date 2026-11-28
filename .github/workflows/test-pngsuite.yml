@@ -8,8 +8,5 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - name: Compiling test binary
-              run: gcc -DGITHUB_ACTIONS test/test.c bitreader.c decompress.c huffman_tree.c decoder.c -lm -o png_test_executable
-
-            - name: Executing test binary
-              run: ./png_test_executable test/pngsuite/png/basn6a08.png
+            - name: Compiling and running test binary
+              run: ./build_test.sh
